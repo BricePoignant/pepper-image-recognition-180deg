@@ -1,0 +1,58 @@
+#!/usr/bin/env python3
+import os
+import rospy
+from sensor_msgs.msg import Image
+from vision_msgs.msg import Detection2D, Detection2DArray, ObjectHypothesisWithPose
+from std_msgs.msg import Bool
+import cv2
+import ros_numpy # pip3 install git+https://github.com/eric-wieser/ros_numpy
+from threading import Lock
+from classmap import category_map as classmap # https://gist.github.com/xhlulu/f7735970704b97fd0b72203628c1cc77
+from pepper_talk.srv import Say
+
+rospy.init_node('decoding_node')
+
+# Initialize the rospy service for speech
+rospy.wait_for_service('animated_say')
+talk_serv = rospy.ServiceProxy('animated_say', Say)
+
+pub = rospy.Publisher('ready_check', Bool, queue_size=1)
+
+liste_lock = Lock()
+
+i=0 # Keeps track of how many images have been detected
+liste_obj_tot=[] # Keeps in memory what the previous images have detected
+
+def rcv_detection(msg):
+    liste_obj=[]
+    for d in msg.detections:
+        c = d.results[0].id # Retrieve the results of the object hypothesis for the image and append them in a list
+        liste_obj.append(c)
+    liste_lock.acquire()
+    global i, liste_obj_tot
+    position_list=["left","middle","right"]
+    print("The objects on his",position_list[i],"side have been detected") # Inform on the advancments of the detection
+    i=i+1
+    liste_obj_tot=liste_obj_tot+liste_obj
+    if (i == 3): # When the node is detecting its third Object hypothesis, it displays what all three images have detected
+        list_obj_fin=sorted(set(liste_obj_tot))
+        list_obj_numb=[]
+        for x in list_obj_fin:
+            list_obj_numb.append(liste_obj_tot.count(x))
+        string="The objects are"
+        for x in list_obj_fin :
+            string=string+", "+str(list_obj_numb[list_obj_fin.index(x)])+" "+classmap[x] # Using classmap to convert the object hypothesis results to string related to the objects
+        print(string)
+        i=0 # Reset the global variables for the next time the node is used
+        liste_obj_tot=[]
+        talk_serv(string) # Send the converted string to the speech service
+        pub.publish(True) # Send the delock signal. That way a new detection command can be sent.
+    liste_lock.release()
+
+sd = rospy.Subscriber("detection", Detection2DArray, rcv_detection)
+
+try:
+    rospy.spin()
+
+except KeyboardInterrupt:
+    print("Shutting down")

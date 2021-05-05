@@ -1,0 +1,6 @@
+<launch>
+    <node name="visualization" pkg="pepper_adv" type="visualization_node_test"/>
+    <node name="head_ctrl" pkg="pepper_adv" type="head_node" output="screen"/>
+    <node name="detector" pkg="pepper_adv" type="detector_node" output="screen"/>
+    <node name="decoder" pkg="pepper_adv" type="decoding_node_test" output="screen"/>
+</launch>

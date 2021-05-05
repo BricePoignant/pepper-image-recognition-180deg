@@ -1,0 +1,88 @@
+#!/usr/bin/env python3
+import os
+import rospy
+from sensor_msgs.msg import Image
+from std_msgs.msg import Empty
+from std_msgs.msg import String
+from std_msgs.msg import Bool
+import ros_numpy # pip3 install git+https://github.com/eric-wieser/ros_numpy
+from naoqi_bridge_msgs.msg import JointAnglesWithSpeed
+from cv_bridge import CvBridge
+from threading import Lock
+import cv2
+
+rospy.init_node('head_node')
+p1 = rospy.Publisher('/pepper_robot/pose/joint_angles', JointAnglesWithSpeed, queue_size=0)
+p2 = rospy.Publisher('image_ctrl', Image, queue_size=12)
+
+# Characteristics of the head mvmt
+s = JointAnglesWithSpeed()
+s.joint_names=['HeadPitch', 'HeadYaw']
+s.relative=0
+s.speed=0.2
+
+rate = rospy.Rate(0.2) # To give time to the head to do the movement before taking the picture
+
+bridge = CvBridge()
+image_lock = Lock()
+
+check_lock = Lock()
+
+image = None
+
+check = False
+
+def rcv_image(msg):
+    global image
+    image_lock.acquire()
+    image = ros_numpy.numpify(msg)
+    image_lock.release()
+
+def rcv_msg(msg):
+    global check
+    check_lock.acquire()
+    temp_check = check
+    check=False
+    check_lock.release()
+    if (temp_check):
+        rospy.loginfo('Pepper is now busy')
+        global image
+        i=-1
+        rate.sleep()
+        while (i<=1) :
+            s.joint_angles=[0.2, i]
+            rospy.loginfo(s.joint_angles)
+            p1.publish(s)
+            rate.sleep()
+            image_lock.acquire()
+            if image is None: im = None
+            else: 
+                im = image.copy()
+            image_lock.release()
+            if (im is not None) :
+                image_message = bridge.cv2_to_imgmsg(im, encoding="passthrough")
+                p2.publish(image_message)
+            i=i+1
+        s.joint_angles=[0.2, 0]
+        rospy.loginfo(s.joint_angles)
+        p1.publish(s)
+    else :
+        rospy.loginfo('Pepper is busy')
+
+def rcv_check(msg):
+    global check
+    check_lock.acquire()
+    check = msg
+    if (check == True) :
+        rospy.loginfo('Pepper is ready')
+    check_lock.release()
+
+si1 = rospy.Subscriber("image", Image, rcv_image)
+si2 = rospy.Subscriber("msg_begin", Empty, rcv_msg)
+si3 = rospy.Subscriber('ready_check', Bool, rcv_check)
+
+try:
+    rospy.spin()
+
+except KeyboardInterrupt:
+    print("Shutting down")

@@ -1,0 +1,11 @@
+<launch>
+    <arg name="pepper_ip" default="10.0.1.207"/>
+    <include file="$(find pepper_bringup)/launch/pepper_full_py.launch">
+        <arg name="nao_ip" value="$(arg pepper_ip)"/>
+    </include>
+    <node name="pepper_talk" pkg="pepper_talk" type="pepper_talk_node" args="--pip $(arg pepper_ip)"/>
+    <node name="visualization" pkg="pepper_adv" type="visualization_node"/>
+    <node name="head_ctrl" pkg="pepper_adv" type="head_node" output="screen"/>
+    <node name="detector" pkg="pepper_adv" type="detector_node" output="screen"/>
+    <node name="decoder" pkg="pepper_adv" type="decoding_node" output="screen"/>
+</launch>
