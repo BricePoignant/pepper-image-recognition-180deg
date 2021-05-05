@@ -34,7 +34,7 @@ To use, execute one the following launch files in the same folder:
     roslaunch pepper_det.launch pepper_ip:='your_ip'
 Connect to pepper using his ip in argument. Default ip is 10.0.1.207.
 
-## USE IF YOU DON'T HAVE PEPPER : 
+### USE IF YOU DON'T HAVE PEPPER : 
 
     roslaunch pepper_test.launch"
 
