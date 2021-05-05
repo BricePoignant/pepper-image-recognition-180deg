@@ -36,7 +36,7 @@ Connect to pepper using his ip in argument. Default ip is 10.0.1.207.
 
 ### USE IF YOU DON'T HAVE PEPPER : 
 
-    roslaunch pepper_test.launch"
+    roslaunch pepper_test.launch
 
 along with the following command line in an other terminal :
 
